@@ -24,4 +24,12 @@ export const auth_users = [
     score: 0,
     online: false,
   },
+  {
+    id: 4,
+    username: "4",
+    password: "4",
+    name: "Hai",
+    score: 0,
+    online: false,
+  },
 ];

@@ -2,7 +2,13 @@ import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 
 import { PLAYING_TIME, RESTARTING_TIME } from "./constants.js";
-import { rooms, rooms_interval, rooms_pick } from "./data/rooms.js";
+import { PLAYING_STATE } from "./data/playing_state.js";
+import {
+  rooms,
+  rooms_interval,
+  rooms_pick,
+  rooms_restart_timeout,
+} from "./data/rooms.js";
 import { SOCKET_EVENTS } from "./data/socket_events.js";
 import { users } from "./data/users.js";
 
@@ -14,6 +20,11 @@ import {
   removeUserFromRoom,
   removeViewer,
 } from "./utils/addRemoveUserInRoom.js";
+import {
+  handleGamingPlayerOff,
+  handleGamingViewerOff,
+} from "./utils/gaming_user_online.js";
+import { getIxRoom } from "./utils/getIndex.js";
 
 import { playerToViewer, viewerToPlayer } from "./utils/player_viewer.js";
 import {
@@ -48,9 +59,7 @@ class MySocket {
     this.socket = socket;
     this.user = null;
     this.room = null;
-
     this.is_player = false;
-    this.timeout_restart = null;
 
     this.onLogin();
     this.onLogout();
@@ -144,18 +153,14 @@ class MySocket {
   //
 
   onJoinRoom = () => {
-    this.socket.on(SOCKET_EVENTS.JOIN_ROOM, (room_id = 0) => {
-      const data_room = addUserToRoom(room_id, this.user.id);
-      if (!data_room) {
-        return;
-      }
-
-      this.room = data_room.room;
-      this.socket.join(room_id);
+    this.socket.on(SOCKET_EVENTS.JOIN_ROOM, (id_room = 0) => {
+      this.room = rooms[getIxRoom(id_room)];
+      addUserToRoom(this.room, this.user.id);
+      this.socket.join(id_room);
       // To other users that you join a room
       this.socket.broadcast.emit(
         SOCKET_EVENTS.JOIN_ROOM,
-        room_id,
+        id_room,
         this.user.id
       );
       // To you when joining a room
@@ -212,7 +217,7 @@ class MySocket {
   };
 
   makeTimeoutRestart = () => {
-    this.timeout_restart = setTimeout(() => {
+    rooms_restart_timeout[this.room.id] = setTimeout(() => {
       restartGame(this.room);
       io.in(this.room.id).emit(SOCKET_EVENTS.RESTART, this.room.id);
     }, RESTARTING_TIME * 1000);
@@ -251,9 +256,9 @@ class MySocket {
 
   onVote = () => {
     this.socket.on(SOCKET_EVENTS.VOTE, (id_be_winner = 0) => {
-      if (!this.room || this.room.playing_state !== "playing") {
-        return;
-      }
+      // if (!this.room || this.room.playing_state !== "playing") {
+      //   return;
+      // }
 
       predictWinner({
         room: this.room,
@@ -289,7 +294,8 @@ class MySocket {
       ) {
         return;
       }
-      clearTimeout(this.timeout_restart);
+      clearTimeout(rooms_restart_timeout[this.room.id]);
+      rooms_restart_timeout[this.room.id] = null;
       restartGame(this.room);
       io.in(this.room.id).emit(SOCKET_EVENTS.RESTART, this.room.id);
     });
@@ -300,40 +306,31 @@ class MySocket {
       if (!this.user) {
         return;
       }
-
       if (!this.room) {
         this.onUserDisconnect();
         return;
       }
 
-      if (this.is_player) {
-        if (this.room.playing_state === "playing") {
-          this.onPlayingDisconnect();
+      if (this.room.playing_state === PLAYING_STATE.WAITING) {
+        if (!this.is_player) {
+          this.onViewerDisconnect();
         } else {
           this.onPlayerDisconnect();
         }
+        return;
       }
-      this.onViewerDisconnect();
+
+      if (this.is_player) {
+        this.onGamingPlayerDisconnect();
+      } else {
+        this.onGamingViewerDisconnect();
+      }
     });
   };
 
-  onPlayingDisconnect = () => {
-    const { arr_is_winner, obj_id_score } = handlePlayingDisconnect(
-      this.room,
-      this.user.id
-    );
-    clearInterval(rooms_interval[this.room.id]);
-    rooms_interval[this.room.id] = null
-    removePlayer(this.room, this.user.id);
+  onUserDisconnect = () => {
     removeUser(this.user.id);
-    io.emit(
-      SOCKET_EVENTS.PLAYING_DISCONNECT,
-      this.room.id,
-      rooms_pick[this.room.id],
-      this.user.id,
-      arr_is_winner,
-      obj_id_score
-    );
+    io.emit(SOCKET_EVENTS.USER_DISCONNECT, this.user.id);
   };
 
   onPlayerDisconnect = () => {
@@ -348,10 +345,32 @@ class MySocket {
     io.emit(SOCKET_EVENTS.VIEWER_DISCONNECT, this.room.id, this.user.id);
   };
 
-  onUserDisconnect = () => {
+  onGamingViewerDisconnect = () => {
+    handleGamingViewerOff(this.room, this.user.id);
     removeUser(this.user.id);
-    io.emit(SOCKET_EVENTS.USER_DISCONNECT, this.user.id);
+    io.emit(SOCKET_EVENTS.GAMING_VIEWER_DISCONNECT, this.room.id, this.user.id);
   };
+
+  onGamingPlayerDisconnect = () => {
+    const { arr_is_winner, obj_id_score } = handlePlayingDisconnect(
+      this.room,
+      this.user.id
+    );
+    clearInterval(rooms_interval[this.room.id]);
+    rooms_interval[this.room.id] = null;
+    handleGamingPlayerOff(room, this.user.id);
+    removeUser(this.user.id);
+    io.emit(
+      SOCKET_EVENTS.GAMING_PLAYER_DISCONNECT,
+      this.room.id,
+      rooms_pick[this.room.id],
+      this.user.id,
+      arr_is_winner,
+      obj_id_score
+    );
+  };
+
+  //
 
   onLogout = () => {
     this.socket.on(SOCKET_EVENTS.LOGOUT, () => {

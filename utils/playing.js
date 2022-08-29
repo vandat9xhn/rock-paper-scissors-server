@@ -1,8 +1,9 @@
 import { PLAYING_TIME } from "../constants.js";
+import { auth_users } from "../data/auth_users.js";
 import { rooms, rooms_pick } from "../data/rooms.js";
 import { users } from "../data/users.js";
 
-import { getIxUser } from "./getIndex.js";
+import { getIxAuthUser, getIxUser } from "./getIndex.js";
 import { getArrIsWinner } from "./getWinner.js";
 
 //
@@ -28,19 +29,21 @@ export const handleUserScore = (
   const obj_id_score_player = {};
   arr_is_winner.forEach((is_winner, ix) => {
     const player = room.players[ix];
-    const ix_user = getIxUser(player.id);
-    const user = users[ix_user];
+    const id_user = player.id;
+    const ix_auth_user = getIxAuthUser(id_user);
+    const auth_user = auth_users[ix_auth_user];
+    const change_score = !is_winner ? -1 : player.online ? 1 : 0;
+    auth_user.score += change_score;
 
-    if (is_winner) {
-      room.winner_name = player.name;
-      user.score += 1;
-    } else {
-      user.score -= 1;
-      room.defeater_name = player.name;
+    if (!player.online) {
+      return;
     }
 
+    const ix_user = getIxUser(id_user);
+    const user = users[ix_user];
+    user.score = auth_user.score;
     player.is_winner = is_winner;
-    obj_id_score_player[user.id] = user.score;
+    obj_id_score_player[id_user] = user.score;
   });
 
   return { obj_id_score_player };
@@ -60,17 +63,24 @@ export const handleViewerPredictDone = (
   }
 
   room.viewers.forEach((item) => {
-    if (item.id_be_winner) {
-      if (item.id_be_winner <= 0) {
-        return;
-      }
-
-      const ix_user = getIxUser(item.id);
-      const user = users[ix_user];
-
-      user.score += item.id_be_winner === id_winner ? 1 : -1;
-      obj_id_score_viewer[user.id] = user.score;
+    if (item.id_be_winner <= 0) {
+      return;
     }
+
+    const change_score =
+      item.id_be_winner !== id_winner ? -1 : item.online ? 1 : 0;
+    const ix_auth_user = getIxAuthUser(item.id);
+    const auth_user = auth_users[ix_auth_user];
+    auth_user.score += change_score;
+
+    if (!item.online) {
+      return;
+    }
+
+    const ix_user = getIxUser(item.id);
+    const user = users[ix_user];
+    user.score = auth_user.score;
+    obj_id_score_viewer[user.id] = user.score;
   });
 
   return { obj_id_score_viewer };

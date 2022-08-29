@@ -12,6 +12,10 @@ export const addUser = (username = "", password = "") => {
   }
 
   const auth_user = auth_users[ix_auth_user];
+  if (users.find((item) => item.id === auth_user.id)) {
+    return;
+  }
+
   const user = {
     id: auth_user.id,
     name: auth_user.name,

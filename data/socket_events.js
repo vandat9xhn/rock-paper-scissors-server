@@ -25,5 +25,6 @@ export const SOCKET_EVENTS = {
   USER_DISCONNECT: "user_disconnect",
   VIEWER_DISCONNECT: "viewer_disconnect",
   PLAYER_DISCONNECT: "player_disconnect",
-  PLAYING_DISCONNECT: "playing_disconnect",
+  GAMING_PLAYER_DISCONNECT: "gaming_player_disconnect",
+  GAMING_VIEWER_DISCONNECT: "gaming_viewer_disconnect",
 };

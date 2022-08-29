@@ -7,6 +7,9 @@ export const restartGame = (room = rooms[0]) => {
   room.playing_time = PLAYING_TIME;
   rooms_pick[room.id] = ["", ""];
 
+  room.players = room.players.filter((item) => item.online === true);
+  room.viewers = room.viewers.filter((item) => item.online === true);
+
   room.players.forEach((item) => {
     item.count_predict_winner = 0;
     item.icon_name = undefined;

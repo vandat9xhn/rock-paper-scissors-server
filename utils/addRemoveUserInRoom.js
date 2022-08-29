@@ -1,22 +1,40 @@
 import { rooms } from "../data/rooms.js";
 import { users } from "../data/users.js";
-import { getIxPlayer, getIxRoom, getIxUser, getIxViewer } from "./getIndex.js";
+import { getIxPlayer, getIxUser, getIxViewer } from "./getIndex.js";
 
 //
-export const addUserToRoom = (id_room = 0, id_user = 0) => {
+const addNewViewer = (room = rooms[0], user = users[0]) => {
+  room.viewers.push({
+    id: user.id,
+    name: user.name,
+    id_be_winner: 0,
+    online: true,
+  });
+};
+
+//
+export const addUserToRoom = (room = rooms[0], id_user = 0) => {
   const ix_user = getIxUser(id_user);
-  const ix_room = getIxRoom(id_room);
-
   const user = users[ix_user];
-  const room = rooms[ix_room];
-  room.viewers.push({ id: user.id, name: user.name });
 
-  return { user, room };
+  // When Gaming: user logout then login again in the room
+  const ix_viewer = getIxViewer(room, id_user);
+  if (ix_viewer >= 0) {
+    room.viewers[ix_viewer].online = true;
+    return;
+  }
+  const ix_player = getIxPlayer(room, id_user);
+  if (ix_player >= 0) {
+    room.players[ix_player].online = true;
+    return;
+  }
+
+  addNewViewer(room, user);
 };
 
 export const removeUserFromRoom = (room = rooms[0], id_user = 0) => {
-  const ix_player = getIxPlayer(room,id_user);
-  const ix_viewer = getIxViewer(room,id_user);
+  const ix_player = getIxPlayer(room, id_user);
+  const ix_viewer = getIxViewer(room, id_user);
 
   if (ix_viewer >= 0) {
     const user = room.viewers.splice(ix_viewer, 1)[0];

@@ -7,6 +7,8 @@ export const predictWinner = ({
   id_viewer = 0,
   id_be_winner = 0,
 }) => {
+  // console.log(id_viewer, room.viewers);
+
   const ix_viewer = getIxViewer(room, id_viewer);
   const ix_player = getIxPlayer(room, id_be_winner);
   room.viewers[ix_viewer].id_be_winner = id_be_winner;

@@ -11,6 +11,8 @@ export const viewerToPlayer = (room = rooms[0], id_user = 0) => {
     has_pick: false,
     icon_name: "",
     is_winner: false,
+    count_predict_winner: 0,
+    online: true,
   };
   room.players.push(player);
 
@@ -24,6 +26,7 @@ export const playerToViewer = (room = rooms[0], id_user = 0) => {
     id: player.id,
     name: player.name,
     id_be_winner: -1,
+    online: true,
   };
   room.viewers.push(viewer);
 
