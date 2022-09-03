@@ -28,7 +28,6 @@ export const addAuthUser = (
     ...user,
     username: username,
     password: password,
-    online: true,
   };
   users.push(user);
   auth_users.push(auth_user);

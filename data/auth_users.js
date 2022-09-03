@@ -6,7 +6,6 @@ export const auth_users = [
     password: "1",
     name: "Nguyen",
     score: 0,
-    online: false,
   },
   {
     id: 2,
@@ -14,7 +13,6 @@ export const auth_users = [
     password: "2",
     name: "Dat",
     score: 0,
-    online: false,
   },
   {
     id: 3,
@@ -22,7 +20,6 @@ export const auth_users = [
     password: "3",
     name: "My",
     score: 0,
-    online: false,
   },
   {
     id: 4,
@@ -30,6 +27,5 @@ export const auth_users = [
     password: "4",
     name: "Hai",
     score: 0,
-    online: false,
   },
 ];

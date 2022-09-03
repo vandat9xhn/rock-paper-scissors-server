@@ -219,7 +219,11 @@ class MySocket {
   makeTimeoutRestart = () => {
     rooms_restart_timeout[this.room.id] = setTimeout(() => {
       restartGame(this.room);
-      io.in(this.room.id).emit(SOCKET_EVENTS.RESTART, this.room.id);
+      io.in(this.room.id).emit(
+        SOCKET_EVENTS.RESTART,
+        this.room.id,
+        PLAYING_TIME
+      );
     }, RESTARTING_TIME * 1000);
   };
 
@@ -282,6 +286,8 @@ class MySocket {
 
       if (is_pick_done) {
         this.handlePlayerPickDone();
+      } else {
+        io.in(this.room.id).emit("pick", this.room.id, this.user.id);
       }
     });
   };
@@ -297,7 +303,11 @@ class MySocket {
       clearTimeout(rooms_restart_timeout[this.room.id]);
       rooms_restart_timeout[this.room.id] = null;
       restartGame(this.room);
-      io.in(this.room.id).emit(SOCKET_EVENTS.RESTART, this.room.id);
+      io.in(this.room.id).emit(
+        SOCKET_EVENTS.RESTART,
+        this.room.id,
+        PLAYING_TIME
+      );
     });
   };
 
@@ -352,13 +362,15 @@ class MySocket {
   };
 
   onGamingPlayerDisconnect = () => {
+    this.makeTimeoutRestart();
     const { arr_is_winner, obj_id_score } = handlePlayingDisconnect(
       this.room,
       this.user.id
     );
+
     clearInterval(rooms_interval[this.room.id]);
     rooms_interval[this.room.id] = null;
-    handleGamingPlayerOff(room, this.user.id);
+    handleGamingPlayerOff(this.room, this.user.id);
     removeUser(this.user.id);
     io.emit(
       SOCKET_EVENTS.GAMING_PLAYER_DISCONNECT,
