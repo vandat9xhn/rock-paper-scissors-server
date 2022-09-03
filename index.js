@@ -1,3 +1,6 @@
+import express from "express";
+import * as dotenv from "dotenv";
+import cors from "cors";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 
@@ -37,18 +40,28 @@ import {
 
 import { predictWinner } from "./utils/predict_winner.js";
 import { restartGame } from "./utils/restart.js";
+import { auth_users } from "./data/auth_users.js";
 
 // ----
 
-const httpServer = createServer();
-const io = new Server(httpServer, {
+dotenv.config();
+const port = process.env.PORT || 4000;
+
+const app = express();
+app.use(cors());
+app.use((req, res) => res.send("ok"));
+
+const server = createServer(app);
+const io = new Server(server, {
   cors: {
-    origin: "http://localhost:8000",
+    origin: [process.env.ORIGIN],
     methods: ["GET", "POST"],
     // allowedHeaders: ["my-custom-header"],
     // credentials: true
   },
 });
+
+server.listen(port);
 
 //
 class MySocket {
@@ -61,10 +74,26 @@ class MySocket {
     this.room = null;
     this.is_player = false;
 
+    this.sendUsersNotLogin();
     this.onLogin();
     this.onLogout();
     this.onDisconnect();
   }
+
+  //
+
+  sendUsersNotLogin = () => {
+    this.socket.on(SOCKET_EVENTS.USERS_NOT_LOG, () => {
+      const setIdUser = new Set();
+      users.forEach((item) => {
+        setIdUser.add(item.id);
+      });
+      const arr_id_user_not_log = auth_users
+        .filter((item) => !setIdUser.has(item.id))
+        .map((item) => item.id);
+      io.emit(SOCKET_EVENTS.USERS_NOT_LOG, arr_id_user_not_log);
+    });
+  };
 
   // ------ Log
 
@@ -110,8 +139,8 @@ class MySocket {
   onLoginSavedAccount = () => {
     this.socket.on(
       SOCKET_EVENTS.LOGIN_SAVED_ACCOUNT,
-      (username = "", password = "") => {
-        const new_user = addUser(username, password);
+      (username = "", password = "", name = "") => {
+        const new_user = addUser(username, password, name);
         if (!new_user) {
           // io.to(`${this.socket.id}`).emit("login_saved_account_fail");
           return;
@@ -124,17 +153,21 @@ class MySocket {
   };
 
   onLogin = () => {
-    this.socket.on(SOCKET_EVENTS.LOGIN, (username = "", password = "") => {
-      // console.log(username, password);
-      const new_user = addUser(username, password);
-      if (!new_user) {
-        io.to(`${this.socket.id}`).emit(SOCKET_EVENTS.LOGIN_FAIL);
-        return;
-      }
+    this.socket.on(
+      SOCKET_EVENTS.LOGIN,
+      (username = "", password = "", name = "") => {
+        const new_user = addUser(username, password, name);
+        const reason = typeof new_user === "string" ? new_user : "";
 
-      this.user = new_user;
-      this.handleAfterLogin();
-    });
+        if (reason) {
+          io.to(`${this.socket.id}`).emit(SOCKET_EVENTS.LOGIN_FAIL, reason);
+          return;
+        }
+
+        this.user = new_user;
+        this.handleAfterLogin();
+      }
+    );
   };
 
   // ------ ROOM
@@ -407,5 +440,3 @@ class MySocket {
 io.on("connection", (socket) => {
   new MySocket(socket);
 });
-
-httpServer.listen(4000);

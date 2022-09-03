@@ -1,7 +1,9 @@
 //
 export const SOCKET_EVENTS = {
+  USERS_NOT_LOG: 'users_not_log',
   REGISTER: "register",
   REGISTER_FAIL: "register_fail",
+
   LOGIN_SAVED_ACCOUNT: "login_saved_account",
   LOGIN: "login",
   LOGIN_FAIL: "login_fail",
