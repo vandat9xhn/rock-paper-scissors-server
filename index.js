@@ -56,8 +56,8 @@ const io = new Server(server, {
   cors: {
     origin: [process.env.ORIGIN],
     methods: ["GET", "POST"],
-    allowedHeaders: ["Access-Control-Allow-Origin"],
-    credentials: true
+    // allowedHeaders: ["Access-Control-Allow-Origin"],
+    // credentials: true
   },
 });
 
@@ -110,6 +110,7 @@ class MySocket {
     );
     this.socket.broadcast.emit(SOCKET_EVENTS.USER_LOGIN, this.user);
 
+    this.onSendMessage()
     this.onJoinRoom();
     this.onOutRoom();
   };
@@ -168,6 +169,12 @@ class MySocket {
         this.handleAfterLogin();
       }
     );
+  };
+
+  onSendMessage = () => {
+    this.socket.on("message", (message = "") => {
+      io.emit("message", this.user.name, message);
+    });
   };
 
   // ------ ROOM
